@@ -3,20 +3,7 @@
 Created on Thu May  3 15:27:15 2018
 
 @author: mrestrepo
- 
-Motivation
-
-Talk about lime 
-
-Problems with scalability 
-
-Our proposal 
-
-Worked out example 
-
-Extensions: 
-    - XGBoost 
-    - multiclass 
+@company: Yuxi Global (www.yuxiglobal.com)
 """
 #%%
 

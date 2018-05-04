@@ -3,6 +3,13 @@
 Created on Fri May  4 14:05:25 2018
 
 @author: mrestrepo
+@company: Yuxi Global (www.yuxiglobal.com)
+
+
+TODO: 
+    - Extension multi-class classifiers
+    - Extension to Boosted Tree models 
+    
 """
 import numpy as np 
 
