@@ -97,6 +97,28 @@ def tree_explain( cls, X ) :
     return explanations, a_priori_prob     
     #%%
     
+def as_pyplot_figure( exp, p0, feat_names, instance_desc ) :
+    """Following lime.explanation.Explanation.as_pyplot_figure, almost verbatim"""
+    import matplotlib.pyplot as plt
+    
+    #exp = self.as_list(label=label, **kwargs)
+    exp = list( zip( feat_names, exp ) ) 
+    fig = plt.figure( dpi=300)
+    vals = [x[1] for x in exp]
+    names = [x[0] for x in exp]
+    vals.reverse()
+    names.reverse()
+    colors = ['green' if x > 0 else 'red' for x in vals]
+    pos = np.arange(len(exp)) + .5
+    plt.barh(pos, vals, align='center', color=colors)
+    plt.yticks(pos, names)
+    plt.xlabel('Contribution to probability of positive class')
+    
+    title = 'Explanation for %s (Predicted prob.=%.3f)' % (instance_desc, p0 + sum(vals) )
+    
+    plt.title(title)
+    return fig
+	
 def assert_impl_limitations( cls )  :
     #%%    
     assert cls.n_classes_ == 2, ( "Explanation method implemented for binary "

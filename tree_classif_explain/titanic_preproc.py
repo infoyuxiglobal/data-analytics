@@ -16,21 +16,6 @@ from tcxp import rf_explain
 
 #%%
     
-def test() :
-    #%%
-    train_df = pd.read_csv( "c:/tmp/titanic/train.csv" )
-
-    train_df, train_Y = preproc( train_df )
-    #%%
-    rfc = RandomForestClassifier( n_estimators=100, max_depth=4 )
-    rfc.fit( train_df, train_Y)
-    train_pred = rfc.predict( train_df )
-    accu = (train_pred == train_Y).sum() / len( train_pred )
-    #%%
-    E, p0 = rf_explain( rfc, train_df )
-    #%%
-   
-    
 def preproc( train_df ) : 
     #%%
     train_Y = train_df["Survived"]
