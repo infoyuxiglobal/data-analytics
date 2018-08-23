@@ -1,0 +1,10 @@
+
+distributed:
+    worker:
+        memory:
+            target: 0.50
+            spill: 0.55
+            pause: 0.70
+            terminate: 0.80
+
+
