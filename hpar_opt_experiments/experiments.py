@@ -7,19 +7,21 @@ Created on Tue Aug 21 08:47:10 2018
 """
 from collections import OrderedDict
 from itertools import product
-import json
-import time
+import random
+
 import os
-import reload
+from importlib import reload
 
 import pandas as pd
 import xgboost as xgb
 #%%
+import pandas as pd
 import numpy as np
 from sklearn.metrics import roc_auc_score
 from sklearn.ensemble import RandomForestClassifier
-
 #%%
+from memoize import Memoizer
+from inst_func_eval import InstFunEvaluator
 #%%
 
 # Data preprocessed by:
@@ -28,7 +30,7 @@ from sklearn.ensemble import RandomForestClassifier
 DATA_DIR = r"C:\_DATA\experimentation\HC_Default_Risk/"
 
 #%%
-from hashlib import md5
+
 #%%
 def main() :
     #%%
@@ -56,44 +58,52 @@ def main() :
     if not os.path.exists( memoization_path ) :
         os.mkdir( memoization_path )
     #%%
-
-def grid_search( param_grid_dic, data, memoization_path ) :
+    fun = Memoizer( lambda param_dic : train_xgb( data, param_dic ),
+                    memoization_path )
     #%%
-    param_grid = list( param_grid_dic.values() )
-    param_combos_shuffled = make_param_combos( param_grid_dic )
+    grid_search( param_grid_dic, fun )
+    #%%
+
+def grid_search( param_grid_dic, fun, seed, log_level=0 ) :
+    #%%
+    import inst_func_eval as ife
+
+    param_combos_shuffled = make_param_combos( param_grid_dic, seed=seed)
 
     best_auc = 0
-    best_combo = None
+    #best_combo = None
+
+    fun_eval = ife.InstFunEvaluator( fun, param_grid_dic )
+
     for i, param_dic  in enumerate( param_combos_shuffled ) :
-        print( tuple( param_dic.items() )  )
-        auc = train_xgb( data, param_dic, memoization_path )
-        print( auc,  " best_auc: ", best_auc  )
+        auc = fun_eval.eval_fun( param_dic )
+        if log_level > 0 :
+            print( tuple( param_dic.items() )  )
+            print( auc,  " best_auc: ", best_auc  )
         if auc > best_auc :
             best_auc = auc
-            best_combo = param_dic
+            #best_combo = param_dic
 
     #%%
-    return best_auc, best_combo
+    return fun_eval
 
 
-def coordinate_descent( param_grid_dic, data, memoization_path ) :
+def coordinate_descent( param_grid_dic, fun, seed=1359 ) :
     #%%
     import coordescent as cd
     reload(cd)
-    import random
 
-    param_names = list( param_grid_dic.keys())
-    fun = lambda param_vals : -train_xgb( data, dict( zip(param_names, param_vals)), memoization_path  )
+    #param_grid = param_grid_dic.values()
 
-    param_grid = list( param_grid_dic.values() )
+    fun_min = lambda param_dic : -fun(param_dic)
+
+    random.seed( seed  )
+
+    _, _, fun_eval = cd.coordinate_descent( fun_min, param_grid_dic, x_idxs=None)
     #%%
-    random.seed( 1359 )
-    x_idxs = [ random.randint(0, len(rng)-1) for rng in param_grid  ]
-
-    ret = cd.coordinate_descent( fun, param_grid, x_idxs )
-
+    return fun_eval
     #%%
-def genetic( param_grid_dic, data,  memoization_path ) :
+def genetic( param_grid_dic, fun ) :
     #%%
     from importlib import reload
     import genetic as g
@@ -102,10 +112,7 @@ def genetic( param_grid_dic, data,  memoization_path ) :
     gene_names = list( param_grid_dic.keys())
     genes_grid = param_grid_dic
 
-    fitness_fun = lambda param_dic : train_xgb( data, param_dic, memoization_path )
-
-    #%%
-    gene_result = g.genetic_algorithm( fitness_fun, gene_names, genes_grid,
+    gene_result = g.genetic_algorithm( fun,  genes_grid,
                                        init_pop = None, pop_size = 30, n_gen=10,
                                        mutation_prob=0.1,
                                        normalize = g.normalizer( 2.0, 0.01),
@@ -113,12 +120,13 @@ def genetic( param_grid_dic, data,  memoization_path ) :
 
 
     #%% 0.7407
-    gene_result = g.genetic_algorithm( fitness_fun, gene_names, genes_grid,
+    gene_result = g.genetic_algorithm( fun, gene_names, genes_grid,
                                      init_pop = None, pop_size = 30, n_gen=10,
                                      mutation_prob=0.2,
                                      #normalize = g.normalizer( 1.0, 0.3),
                                      seed=1337 )
     #%%
+    return gene_result
 
 def test( data, memoization_path ) :
     #%%
@@ -172,21 +180,10 @@ def make_param_combos( param_grid_dic, seed=1337 ) :
     #%%
     return param_combos_shuffled
 
+#%%
 
-
-def train_xgb( data, param_dic, memoization_path, model_type='xgb' ) :
+def train_xgb( data, param_dic, model_type='xgb' ) :
     # fit model no training data
-
-    hex_hash = md5( str( tuple(param_dic.items()) ).encode("utf8") ).hexdigest()
-
-    if memoization_path is not None :
-        memo_file = memoization_path + "/" + hex_hash + ".json"
-        if os.path.exists( memo_file ) :
-            with open( memo_file, "rt", encoding="utf8" ) as f_in :
-                json_obj = json.loads( f_in.read() )
-                return json_obj["auc"]
-
-    t0 = time.clock()
 
     if model_type == 'xgb' :
         model = xgb.XGBClassifier( learning_rate=param_dic["learning_rate"],
@@ -202,14 +199,6 @@ def train_xgb( data, param_dic, memoization_path, model_type='xgb' ) :
     y_pred = model.predict_proba( data["x_test"] )[:,1]
     auc = roc_auc_score( data["y_test"], y_pred )
     #
-    elapsed = time.clock() - t0
-
-    if memoization_path is not None:
-        with open( memo_file, "wt", encoding="utf8" ) as f_out :
-            json_obj =  { "params" : tuple( param_dic.items()) , "auc" : auc, "elapsed" : elapsed }
-            print( json.dumps( json_obj ), file=f_out )
-
-
     return auc
 #%%
 

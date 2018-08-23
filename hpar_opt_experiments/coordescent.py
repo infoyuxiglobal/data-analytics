@@ -5,99 +5,103 @@ Created on Tue Aug 14 16:24:45 2018
 @author: mrestrepo
 @company: Yuxi Global (www.yuxiglobal.com)
 
-Coordinate descent
-Genetic
-Bayesian algorithms
 """
 #pylint: disable=C0326
 
 import random
 import math
-from typing import List, Callable
+from collections import OrderedDict
+from typing import List, Callable, Dict
+from inst_func_eval import InstFunEvaluator
+
 
 def coordinate_descent( fun : Callable[ [List[float]], float ],
-                        param_grid : List[List[float]],
+                        param_grid_dic : Dict[str, List[float]],
                         x_idxs : List[int],
-                        max_iters : int = 1000,
-                        seed : int =1337) :
+                        eval_budget : int = 1000,
+                        seed : int =1337,
+                        log_level=0) :
+
+    assert isinstance( param_grid_dic, OrderedDict), "param_grid_dic should be an OrderedDict"
+
+    fun_eval = InstFunEvaluator( fun, param_grid_dic)
+
+    max_idxs = [ len( rng ) - 1  for rng in param_grid_dic.values() ]
+
+    if x_idxs is None :
+            x_idxs = [ random.randrange(0, max_idx) for max_idx in max_idxs]
+
+    best_val = float( "inf" )
+    best_idxs = []
+
+    while fun_eval.eval_cnt() < eval_budget :
+        fun_val, x_idxs = coordinate_descent0( fun_eval, x_idxs, max_idxs )
+        if fun_val < best_val :
+            best_val = fun_val
+            best_idxs = x_idxs
+
+        x_idxs = [ random.randrange(0, max_idx) for max_idx in max_idxs ]
+
+    return best_val, best_idxs, fun_eval
+
+
+def coordinate_descent0( fun_eval : Callable[ [List[float]], float ],
+                        #param_grid_dic : Dict[str, List[float]],
+                        x_idxs : List[int],
+                        max_idxs,
+                        eval_budget : int = 1000,
+                        seed : int =1337,
+                        log_level=0) :
 
     """ Implements coordinate descent method for a function of n parameters
     param_grid should be a list of n lists, with the d-th list specifying
     a list of possible values for the d-th parameter
     """
+
     random.seed( seed )
 
-    fun_eval = InstFunEvaluator( fun, param_grid )
+    fun_val = fun_eval.from_idxs( x_idxs )
 
-    max_idxs = [ len( param_vals ) - 1  for param_vals in param_grid  ]
-    print( max_idxs )
-
-    fun_val = fun_eval( x_idxs )
-
-    for ite in range( max_iters ) :
-
-        print( "\n\n** iter=%d start fun_next=%.4f x_idxs=%s" % (ite, fun_val, x_idxs) )
-        fun_next, x_idxs = take_one_step( fun_eval, fun_val, x_idxs, max_idxs )
-        print( "** iter=%d - end fun_next=%.4f x_idxs=%s" % (ite, fun_val, x_idxs) )
+    ite = 0
+    while fun_eval.eval_cnt() < eval_budget :
+        #    print( "\n\n** iter=%d start fun_next=%.4f x_idxs=%s" % (ite, fun_val, x_idxs) )
+        fun_next, x_idxs_next = take_one_step( fun_eval, fun_val,
+                                               eval_budget, x_idxs, max_idxs )
+        ite += 1
+        if log_level > 0 :
+            print( "** iter=%d - end fun_next=%.4f x_idxs=%s" % (ite, fun_val, x_idxs) )
 
         if fun_next >= fun_val :
             # got stuck
             return fun_val, x_idxs
 
         fun_val = fun_next
+        x_idxs  = x_idxs_next
 
-    return fun_val, x_idxs, fun_eval.eval_cnt()
+    return fun_val, x_idxs
 
-class InstFunEvaluator :
-    """Instrumented function evaluator"""
 
-    def __init__( self, fun, param_grid, log=False )  :
-        """Initialize evaluator function and param_grid
-        param_grid should be an array of arrays keys being parameter names
-        param_grid[i] should be an array of valid values for the i-th argument of fun """
-
-        n_params = len(param_grid)
-        def eval_fun( x_idxs ) :
-            #print( "eval_fun: x_idxs=%s type:%s" % (x_idxs, type(x_idxs)) )
-            lst = [ param_grid[d][ x_idxs[d] ] for d in range(n_params) ]
-            fun_val = fun( lst )
-            if( log ) :
-                print( x_idxs, fun_val)
-
-            return fun_val
-
-        self._param_grid = param_grid
-        self._eval_cnt = 0
-        self._eval_fun = eval_fun
-
-    def __call__(self, x_idxs ) :
-        self._eval_cnt += 1
-
-        return self._eval_fun( x_idxs )
-
-    def eval_cnt( self  ) :
-        return self._eval_cnt
-
-    def idxs_to_xs( self, x_idxs ) :
-        return [ self._param_grid[idx] for idx in x_idxs ]
-
-def take_one_step( fun_eval : InstFunEvaluator, fun_val : float,
+def take_one_step( fun_eval : InstFunEvaluator, fun_val : float, eval_budget : int,
                    x_idxs  : List[int], max_idxs : List[int] ) :
     """Generate a new function evaluation position and the corresponding
     value that is less than or equal the current fun_val"""
 
     n_params = len( x_idxs )
 
+    min_dirs = [ ]
     # Try each direction in turn
-    mins_dirs = [ minimize_along_d( fun_eval, fun_val, di, x_idxs, max_idxs[di] )
-                  for di in range(n_params)]
+    for di in range(n_params) :
+        min_di = minimize_along_d( fun_eval, fun_val, di, x_idxs, max_idxs[di] )
+        min_dirs.append( min_di )
+        if fun_eval.eval_cnt() > eval_budget :
+            break
 
-    print( mins_dirs )
+    #print( mins_dirs )
+    return min( min_dirs, key = lambda pair : pair[0]  )
 
-    return min( mins_dirs, key = lambda pair : pair[0]  )
 
-
-def minimize_along_d( fun_eval, fun_val, d : int,  x_idxs_ : List[int], max_idx_d) :
+def minimize_along_d( fun_eval, fun_val, d : int,  x_idxs_ : List[int],
+                      max_idx_d : List[int], log_level : int=0) :
     """ Search for a local mininim by moving along direction d  """
     #first identify descent direction
     #xp_idxs = x_idxs.copy()
@@ -110,17 +114,18 @@ def minimize_along_d( fun_eval, fun_val, d : int,  x_idxs_ : List[int], max_idx_
     if x_idxs[d] < max_idx_d  :
         x_idxs_r = x_idxs.copy()
         x_idxs_r[d] += 1
-        fun_val_r = fun_eval( x_idxs_r )
+        fun_val_r = fun_eval.from_idxs( x_idxs_r )
 
     if x_idxs[d] > 0 :
         x_idxs_l = x_idxs.copy()
         x_idxs_l[d] -= 1
-        fun_val_l = fun_eval( x_idxs_l )
+        fun_val_l = fun_eval.from_idxs( x_idxs_l )
 
     step = 0
 
-    print( "\nMinimizing along d=%d x_idxs=%s fun_val=%.4f fun_val_l=%.4f fun_val=%.4f" %
-           (d, x_idxs, fun_val_r, fun_val_l, fun_val) )
+    if log_level > 0 :
+        print( "\nMinimizing along d=%d x_idxs=%s fun_val=%.4f fun_val_l=%.4f fun_val=%.4f" %
+              (d, x_idxs, fun_val_r, fun_val_l, fun_val) )
 
     if   ( (fun_val_r < fun_val_l) or math.isnan(fun_val_l)) and  fun_val_r < fun_val :
         # right is steepest descent direction
@@ -142,7 +147,8 @@ def minimize_along_d( fun_eval, fun_val, d : int,  x_idxs_ : List[int], max_idx_
         assert False, ( f"This shouldn't happen: d={d},  fun_val={fun_val} "
                         f"fun_val_r={fun_val_r}, fun_val_l={fun_val_l}" )
 
-    print( "d=%d step=%d fun_next=%.4f" % (d, step, fun_next) )
+    if log_level > 1 :
+        print( "d=%d step=%d fun_next=%.4f" % (d, step, fun_next) )
 
     if step == 0 :
         # we are already at local minimum along direction d
@@ -153,22 +159,23 @@ def minimize_along_d( fun_eval, fun_val, d : int,  x_idxs_ : List[int], max_idx_
     while True :
 
         if (x_idxs[d] + step) > max_idx_d  or (x_idxs[d]+step) < 0 :
-
             return fun_next, x_idxs
 
         fun_old  = fun_next
         x_idxs_old = x_idxs.copy()
 
         x_idxs[d] += step
-        fun_next = fun_eval( x_idxs )
-        print( "after fun_eval: x_idxs=%s f=%.6f" % (x_idxs, fun_next) )
+        fun_next = fun_eval.from_idxs( x_idxs )
+        if log_level > 1 :
+            print( "after fun_eval: x_idxs=%s f=%.6f" % (x_idxs, fun_next) )
 
         if not (fun_next < fun_old) :
-            print( "No longer decreasing fun_next(%s)= %.6f  fun_old(%s)=%.6f"
-                  % (x_idxs, fun_next, x_idxs_old, fun_old))
+            if log_level > 1 :
+                print( "No longer decreasing fun_next(%s)= %.6f  fun_old(%s)=%.6f"
+                      % (x_idxs, fun_next, x_idxs_old, fun_old))
             return fun_old, x_idxs_old
-
-        print( "xp_idxs=%s fun_next=%.3f" % (x_idxs, fun_next) )
+        if log_level > 1 :
+            print( "xp_idxs=%s fun_next=%.3f" % (x_idxs, fun_next) )
 
     return fun_next, x_idxs
 
