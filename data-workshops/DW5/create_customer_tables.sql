@@ -11,13 +11,17 @@ CREATE TABLE customer (
         sales REAL
 );
 
+drop table if exists credit_score;
+
 CREATE TABLE credit_score (
         cust_id BIGINT,
         credit_score INT
 );
-CREATE TABLE bod (
+
+drop table if exists dob;
+CREATE TABLE dob (
         cust_id BIGINT,
-        bod VARCHAR(10)
+        dob VARCHAR(10)
 );
 
 copy customer  FROM 'C:\_DATA\DW5\customer.csv' DELIMITER ';' CSV HEADER;
@@ -45,5 +49,5 @@ create table customer30k  as
 select * from customer where cust_id % 100 < 3
 ;
 
-alter table customer10k add primary key (cust_id);
+alter table customer30k add primary key (cust_id);
 ;
