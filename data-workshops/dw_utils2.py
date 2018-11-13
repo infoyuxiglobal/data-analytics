@@ -18,7 +18,7 @@ def create_submitter( host='localhost', port=80, user='mateini', token='', ws_ke
     print( "Creating submitter function Submitting test question to verify connection." )
 
     # construct the closure we are going to return
-    def submit( question_id, answer, echo=True) :
+    def submit( question_id, answer, echo=True, ac_reload= False) :
         return submit_full( host, port, user, token, ws_key, question_id, answer, echo=echo )
 
     submit( 'Q00', 'test answer' )
@@ -35,9 +35,10 @@ def submit_full( host, port, user, token, ws_key, question_id, answer, echo=True
         ws_enc     = parse.quote( str(ws_key).strip() )
         q_id_enc   = parse.quote( str(question_id).strip() )
         token_enc  = parse.quote( str(token).strip() )
-
-        url = f'http://{host}:{port}/v2/answer?w={ws_enc}&u={user_enc}&tk={token_enc}&q={q_id_enc}&t={answer_enc}'
-        with urllib.request.urlopen(url) as response:
+        pre = "https" if port == 443 else "http"
+        url = f'{pre}://{host}:{port}/v2/answer?w={ws_enc}&u={user_enc}&tk={token_enc}&q={q_id_enc}&t={answer_enc}'
+        print( url ) 
+		with urllib.request.urlopen(url) as response:
             txt = response.read()
             if txt == b'Received Correct' :
                 print( f'Answer for question {question_id} is correct \U0001F603' )
