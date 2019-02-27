@@ -21,12 +21,13 @@
 library( e1071 )
 # install.packages("LiblineaR") # quitar comentario y ejecutar si lo siguiente no funciona
 # library( LiblineaR )
-
-# IMPORTANTE: cambiar el siguiente directorio a la carpeta donde están los 
-# archivos .RData y mnist.R
-setwd( "C:/Users/Mateo/Desktop/Clase SVM" ) 
 source( "mnist.R") 
 
+# IMPORTANTE: Bajar los archivos de datos de 
+# el [Google drive de Mateo](https://drive.google.com/drive/folders/0B8mCwznqOw0bMDhqaFA2aDVwM3M)
+# Luego cambiar el siguiente directorio a la carpeta donde se descargaron 
+# archivos .RData 
+setwd( "C:/Users/Mateo/Downloads" ) 
 load( "df56.RData") # También se puede cargar "df17.RData"
 
 dim( df )
