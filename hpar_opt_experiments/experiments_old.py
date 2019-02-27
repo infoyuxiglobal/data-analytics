@@ -53,9 +53,6 @@ def main() :
     test_fraction = 0.16
     data = subsample( data0, train_fraction, test_fraction )
     #%%
-    seed=1359
-    log_level=0
-    #%%
     memoization_path = DATA_DIR + "/" + "xgboost_memo%g" % train_fraction
     print( "memoization_path= " + memoization_path)
     if not os.path.exists( memoization_path ) :
@@ -66,13 +63,6 @@ def main() :
     #%%
     grid_search( param_grid_dic, fun )
     #%%
-
-
-def run_trials( n_trials, param_grid_dic, fun, method, method_name ) :
-
-    for i in range(n_trials) :
-        print( "trial = %d" % i )
-        fun_eval = method( param_grid_dic, fun, seed=i )
 
 def grid_search( param_grid_dic, fun, seed, log_level=0 ) :
     #%%
@@ -97,6 +87,7 @@ def grid_search( param_grid_dic, fun, seed, log_level=0 ) :
     #%%
     return fun_eval
 
+
 def coordinate_descent( param_grid_dic, fun, seed=1359 ) :
     #%%
     import coordescent as cd
@@ -108,42 +99,34 @@ def coordinate_descent( param_grid_dic, fun, seed=1359 ) :
 
     random.seed( seed  )
 
-    best_val, best_idxs, fun_eval = cd.coordinate_descent( fun_min, param_grid_dic, x_idxs=None)
+    _, _, fun_eval = cd.coordinate_descent( fun_min, param_grid_dic, x_idxs=None)
     #%%
     return fun_eval
     #%%
-def genetic( param_grid_dic, fun, seed=1336 ) :
+def genetic( param_grid_dic, fun ) :
     #%%
     from importlib import reload
-    import genetic as G
-    reload( G )
+    import genetic as g
+    reload( g )
 
+    gene_names = list( param_grid_dic.keys())
     genes_grid = param_grid_dic
 
-    best_val, best_idxs, fun_eval  = G.genetic_algorithm( fun,  genes_grid,
-                                       init_pop = None, pop_size = 10, n_gen=30,
+    gene_result = g.genetic_algorithm( fun,  genes_grid,
+                                       init_pop = None, pop_size = 30, n_gen=10,
                                        mutation_prob=0.1,
                                        normalize = g.normalizer( 2.0, 0.01),
-                                       seed=seed )
+                                       seed=1336 )
 
-    # First set of experiments
-    #best_val, best_idxs, fun_eval  = G.genetic_algorithm( fun,  genes_grid,
-    #                                   init_pop = None, pop_size = 30, n_gen=10,
-    #                                   mutation_prob=0.1,
-    #                                   normalize = g.normalizer( 2.0, 0.01),
-    #                                   seed=seed )
 
-    print( best_val, fun_eval.eval_cnt() )
-    #%%
-    return fun_eval
     #%% 0.7407
-    #_ = G.genetic_algorithm( fun, gene_names, genes_grid,
-    #                                 init_pop = None, pop_size = 30, n_gen=10,
-    #                                 mutation_prob=0.2,
-    #                                 #normalize = g.normalizer( 1.0, 0.3),
-    #                                 seed=1337 )
+    gene_result = g.genetic_algorithm( fun, gene_names, genes_grid,
+                                     init_pop = None, pop_size = 30, n_gen=10,
+                                     mutation_prob=0.2,
+                                     #normalize = g.normalizer( 1.0, 0.3),
+                                     seed=1337 )
     #%%
-
+    return gene_result
 
 def test( data, memoization_path ) :
     #%%
