@@ -2,10 +2,12 @@
 
 
 **Nota**: Para visualizar correctamente las expresiones matemáticas 
- este documento recomendamos usar la extensión de Chrome llamada [markdown viewer](https://chrome.google.com/webstore/detail/markdown-viewer/ckkdlimhmcjmikdlpkmbgfkaikojcbjk?hl=en). Luego de instalarla, dar clic en el botón de configuración de la misma (Una 'm' minúscula encerrada en un círculo) ir a la pestaña *Content* y asegurarse de que 
+ este documento recomendamos el siguiente procedimiento.:
+ 1. Descargue este archivo como texto plano (extensión `.md`) a sus disco duro.
+ 2. Descargue la extensión de Chrome llamada [markdown viewer](https://chrome.google.com/webstore/detail/markdown-viewer/ckkdlimhmcjmikdlpkmbgfkaikojcbjk?hl=en). 
+ 3. Luego de instalarla, abrir la versión descargada del documento y dar clic en el botón de configuración de markdown viewer a la derecha de la berra de dirección (Una 'm' minúscula encerrada en un círculo). Luego ir a la pestaña *Content* y asegurarse de que 
  *mathjax* esté activado. 
- 
- 
+  
 
 Las máquinas de soporte vectorial son un enfoque para resolver
 el problema de clasificación de dos clases de una manera directa.
